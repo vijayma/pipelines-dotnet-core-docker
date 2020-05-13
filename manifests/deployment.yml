@@ -1,0 +1,16 @@
+apiVersion : apps/v1beta1
+kind: Deployment
+metadata:
+  name: vijaymapipelinesdotnetcoredocker 
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: vijaymapipelinesdotnetcoredocker 
+    spec:
+      containers:
+        - name: vijaymapipelinesdotnetcoredocker 
+          image: vijaymapipelinesdotnetcore9a18.azurecr.io/vijaymapipelinesdotnetcoredocker
+          ports:
+          - containerPort: 80
