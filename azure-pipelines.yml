@@ -57,7 +57,7 @@ extends:
         displayName: Deploy
         pool:
           vmImage: ${{ parameters.vmImageName }}
-        environment: 'PMAllStarsSpringRetreat.demo'
+        environment: 'vijaymapipelinesdotnetcoredocker.default'
         strategy:
           runOnce:
             deploy:
