@@ -1,36 +1,41 @@
-# Deploy to Azure Kubernetes Service
-# Build and push image to Azure Container Registry; Deploy to Azure Kubernetes Service
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
-
 trigger:
 - master
 
 resources:
-- repo: self
+  repositories:
+    - repository: P1
+      type: git
+      name: P1/P1
 
-variables:
+parameters:
+  - name: vmImageName
+    type: string
+    default: ubuntu-latest
+  - name: dockerRegistryServiceConnection
+    type: string
+    default: 'fd9b2290-6f4c-4276-8379-a6cc428840f4'
+  - name: imageRepository
+    type: string
+    default: 'vijaymapipelinesdotnetcoredocker'
+  - name: containerRegistry
+    type: string
+    default: 'vijaymapipelinesdotnetcore9a18.azurecr.io'
+  - name: dockerfilePath
+    type: string
+    default: '**/Dockerfile'
+  - name: tag
+    type: string
+    default: '$(Build.BuildId)'
+  - name: imagePullSecret
+    type: string
+    default: 'vijaymapipelinesdotnetcore9a182bba-auth'
 
-  # Container registry service connection established during pipeline creation
-  dockerRegistryServiceConnection: 'fd9b2290-6f4c-4276-8379-a6cc428840f4'
-  imageRepository: 'vijaymapipelinesdotnetcoredocker'
-  containerRegistry: 'vijaymapipelinesdotnetcore9a18.azurecr.io'
-  dockerfilePath: '**/Dockerfile'
-  tag: '$(Build.BuildId)'
-  imagePullSecret: 'vijaymapipelinesdotnetcore9a182bba-auth'
+extends:
+  template: secure-deployment.yml@P1
+  parameters:
+    vmImageName: ubuntu-latest
 
-  # Agent VM image name
-  vmImageName: 'ubuntu-latest'
-  
-
-stages:
-- stage: Build
-  displayName: Build stage
-  jobs:  
-  - job: Build
-    displayName: Build
-    pool:
-      vmImage: $(vmImageName)
-    steps:
+    buildSteps:
     - task: Docker@2
       displayName: Build and push an image to container registry
       inputs:
@@ -40,40 +45,37 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
-          
+
     - upload: manifests
       artifact: manifests
 
-- stage: Deploy
-  displayName: Deploy stage
-  dependsOn: Build
+    deployStages:
+    - stage: deploy
 
-  jobs:
-  - deployment: Deploy
-    displayName: Deploy
-    pool:
-      vmImage: $(vmImageName)
-    environment: 'vijaymapipelinesdotnetcoredocker.default'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: KubernetesManifest@0
-            displayName: Create imagePullSecret
-            inputs:
-              action: createSecret
-              secretName: $(imagePullSecret)
-              dockerRegistryEndpoint: $(dockerRegistryServiceConnection)
-              
-          - task: KubernetesManifest@0
-            displayName: Deploy to Kubernetes cluster
-            inputs:
-              action: deploy
-              manifests: |
-                $(Pipeline.Workspace)/manifests/deployment.yml
-                $(Pipeline.Workspace)/manifests/service.yml
-              imagePullSecrets: |
-                $(imagePullSecret)
-              containers: |
-                $(containerRegistry)/$(imageRepository):$(tag)
-
+      jobs:
+      - deployment: Deploy
+        displayName: Deploy
+        pool:
+          vmImage: ${{ parameters.vmImageName }}
+        environment: 'PMAllStarsSpringRetreat.demo'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+              - task: KubernetesManifest@0
+                displayName: Create imagePullSecret
+                inputs:
+                  action: createSecret
+                  secretName: ${{ parameters.imagePullSecret }}
+                  dockerRegistryEndpoint: ${{ parameters.dockerRegistryServiceConnection }}
+              - task: KubernetesManifest@0
+                displayName: Deploy to Kubernetes cluster
+                inputs:
+                  action: deploy
+                  manifests: |
+                    $(Pipeline.Workspace)/manifests/deployment.yml
+                    $(Pipeline.Workspace)/manifests/service.yml
+                  imagePullSecrets: |
+                    ${{ parameters.imagePullSecret }}
+                  containers: |
+                    ${{ parameters.containerRegistry }}/${{ parameters.imageRepository }}:${{ parameters.tag }}
