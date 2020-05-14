@@ -50,7 +50,7 @@ extends:
       artifact: manifests
 
     deployStages:
-    - stage: deploy
+    - stage: DeployTest
 
       jobs:
       - deployment: Deploy
@@ -58,6 +58,68 @@ extends:
         pool:
           vmImage: ${{ parameters.vmImageName }}
         environment: 'test.default'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+              - task: KubernetesManifest@0
+                displayName: Create imagePullSecret
+                inputs:
+                  action: createSecret
+                  secretName: ${{ parameters.imagePullSecret }}
+                  dockerRegistryEndpoint: ${{ parameters.dockerRegistryServiceConnection }}
+              - task: KubernetesManifest@0
+                displayName: Deploy to Kubernetes cluster
+                inputs:
+                  action: deploy
+                  manifests: |
+                    $(Pipeline.Workspace)/manifests/deployment.yml
+                    $(Pipeline.Workspace)/manifests/service.yml
+                  imagePullSecrets: |
+                    ${{ parameters.imagePullSecret }}
+                  containers: |
+                    ${{ parameters.containerRegistry }}/${{ parameters.imageRepository }}:${{ parameters.tag }}
+
+    - stage: DeployProd1
+      dependsOn: DeployTest
+
+      jobs:
+      - deployment: Deploy
+        displayName: Deploy
+        pool:
+          vmImage: ${{ parameters.vmImageName }}
+        environment: 'prod1.default'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+              - task: KubernetesManifest@0
+                displayName: Create imagePullSecret
+                inputs:
+                  action: createSecret
+                  secretName: ${{ parameters.imagePullSecret }}
+                  dockerRegistryEndpoint: ${{ parameters.dockerRegistryServiceConnection }}
+              - task: KubernetesManifest@0
+                displayName: Deploy to Kubernetes cluster
+                inputs:
+                  action: deploy
+                  manifests: |
+                    $(Pipeline.Workspace)/manifests/deployment.yml
+                    $(Pipeline.Workspace)/manifests/service.yml
+                  imagePullSecrets: |
+                    ${{ parameters.imagePullSecret }}
+                  containers: |
+                    ${{ parameters.containerRegistry }}/${{ parameters.imageRepository }}:${{ parameters.tag }}
+
+    - stage: DeployProd2
+      dependsOn: DeployTest
+
+      jobs:
+      - deployment: Deploy
+        displayName: Deploy
+        pool:
+          vmImage: ${{ parameters.vmImageName }}
+        environment: 'prod2.default'
         strategy:
           runOnce:
             deploy:
