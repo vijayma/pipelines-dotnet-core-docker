@@ -90,7 +90,8 @@ extends:
           vmImage: ${{ parameters.vmImageName }}
         environment: 'prod1.default'
         strategy:
-          runOnce:
+          canary:
+            increments: [10, 20]
             deploy:
               steps:
               - task: KubernetesManifest@0
@@ -121,7 +122,8 @@ extends:
           vmImage: ${{ parameters.vmImageName }}
         environment: 'prod2.default'
         strategy:
-          runOnce:
+          canary:
+            increments: [10, 20]
             deploy:
               steps:
               - task: KubernetesManifest@0
